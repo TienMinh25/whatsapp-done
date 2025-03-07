@@ -17,14 +17,16 @@
 		"ffmpeg": "^0.0.4",
 		"langchain": "^0.0.156",
 		"openai": "^4.52.1",
+		"pg": "^8.13.3",
 		"picocolors": "^1.0.0",
 		"qrcode": "^1.5.3",
-		"whatsapp-web.js": "^1.25.0"
+		"whatsapp-web.js": "^1.26.0"
 	},
 	"engines": {
 		"node": ">=18.0.0"
 	},
 	"devDependencies": {
+		"@types/pg": "^8.11.11",
 		"@types/qrcode": "^1.5.2",
 		"prettier": "^3.0.3"
 	}

@@ -3,10 +3,11 @@ import process from "process";
 import { TranscriptionMode } from "./types/transcription-mode";
 import { TTSMode } from "./types/tts-mode";
 import { AWSPollyEngine } from "./types/aws-polly-engine";
-
 // Environment variables
 import dotenv from "dotenv";
-dotenv.config();
+import path from "path";
+
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 // Config Interface
 interface IConfig {
@@ -54,6 +55,13 @@ interface IConfig {
 	transcriptionEnabled: boolean;
 	transcriptionMode: TranscriptionMode;
 	transcriptionLanguage: string;
+
+	// postgres
+	postgresHost: string;
+	postgresUsername: string;
+	postgresPassword: string;
+	postgresPort: number;
+	postgresDB: string;
 }
 
 // Config
@@ -104,7 +112,14 @@ export const config: IConfig = {
 	// Transcription
 	transcriptionEnabled: getEnvBooleanWithDefault("TRANSCRIPTION_ENABLED", false), // Default: false
 	transcriptionMode: getEnvTranscriptionMode(), // Default: local
-	transcriptionLanguage: process.env.TRANSCRIPTION_LANGUAGE || "" // Default: null
+	transcriptionLanguage: process.env.TRANSCRIPTION_LANGUAGE || "", // Default: null
+
+	// Postgres
+	postgresHost: process.env.POSTGRES_HOST || "localhost",
+	postgresUsername: process.env.POSTGRES_USERNAME || "admin",
+	postgresPassword: process.env.POSTGRES_PASSWORD || "admin",
+	postgresPort: process.env.POSTGRES_PORT ? +process.env.POSTGRES_PORT : 5432,
+	postgresDB: process.env.POSTGRES_DB || "whatsapp_db"
 };
 
 /**

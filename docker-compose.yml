@@ -1,16 +1,61 @@
 version: "3"
 services:
-    whatsapp-chatgpt:
-        container_name: whatsapp-chatgpt
-        read_only: true
-        image: ghcr.io/askrella/whatsapp-chatgpt:master
-        environment:
-            OPENAI_API_KEY: ""
-            OPENAI_GPT_MODEL: ""
-            PREFIX_ENABLED: ""
-            SERPAPI_API_KEY: ""
+    # whatsapp-chatgpt:
+    #     container_name: whatsapp-chatgpt
+    #     build:
+    #         context: .
+    #         dockerfile: Dockerfile
+    #     read_only: true
+    #     platform: linux/amd64
+    #     # image: ghcr.io/askrella/whatsapp-chatgpt:master
+    #     environment:
+    #         OPENAI_API_KEY: ""
+    #         OPENAI_GPT_MODEL: ""
+    #         PREFIX_ENABLED: ""
+    #         SERPAPI_API_KEY: ""
+    #     restart: unless-stopped
+    #     volumes:
+    #         - session-data:/app/session
+    speech-api:
+        container_name: speech-api
+        build:
+            context: ./speech-rest-api
+            dockerfile: Dockerfile
         restart: unless-stopped
+        ports:
+          - "100:3000"
+
+    postgres:
+        image: postgres:17
+        container_name: whatsapp_postgres
+        environment:
+            - POSTGRES_USER=admin
+            - POSTGRES_PASSWORD=admin
+            - POSTGRES_DB=whatsapp_db
+        ports:
+            - "5432:5432"
         volumes:
-            - session-data:/app/session
+            - whatapps_data:/var/lib/postgresql/data
+            - .src/scripts/database:/docker-entrypoint-initdb.d
+        restart: unless-stopped
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U admin -d whatsapp_db"]
+            interval: 10s
+            retries: 5
+            start_period: 10s
+
+    pgadmin:
+        image: dpage/pgadmin4
+        container_name: whatsapp_pgadmin
+        environment:
+            - PGADMIN_DEFAULT_EMAIL=admin@example.com
+            - PGADMIN_DEFAULT_PASSWORD=admin
+        ports:
+            - "5050:80"
+        restart: unless-stopped
+        depends_on:
+            postgres:
+                condition: service_healthy
 volumes:
     session-data:
+    whatapps_data:
