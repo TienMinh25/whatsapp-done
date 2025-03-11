@@ -7,6 +7,7 @@ export interface Message {
 	message: string;
 	fromMe: boolean;
 	timestamp: Date;
+	title: string;
 }
 
 interface Contact {
@@ -69,9 +70,9 @@ const saveChatHistory = async (messages: Message[]): Promise<void> => {
 		await client.query("BEGIN");
 
 		for (const msg of messages) {
-			const { chat_id, phone, message, fromMe, timestamp } = msg;
-
-			await addNewChat(chat_id, null);
+			const { chat_id, phone, message, fromMe, timestamp, title } = msg;
+			console.log("TITLE: " + title);
+			await addNewChat(chat_id, title);
 
 			const exists = await checkIfContactExists(phone);
 			if (!exists) {

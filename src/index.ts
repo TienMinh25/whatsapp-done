@@ -52,38 +52,44 @@ const start = async () => {
 		}
 	});
 
-	client.on(Events.MESSAGE_RECEIVED, async (message) => {
-		console.log(`📩 Tin nhắn từ ${message.from}: ${message.body}`);
-		const exists = await checkIfContactExists(message.from);
+	client.on(Events.MESSAGE_CREATE, async (message) => {
+		console.log(` ${message.from}: ${message.body}`);
 
-		if (!exists) {
-			console.log(`🆕 Người dùng mới ${message.from}, gửi thông điệp giới thiệu...`);
-			await client.sendMessage(
-				message.from,
-				`Hola beautiful, como estas? 🙂\n\nIf you want to apply now for the job, you can go to https://appplyx.com`
-			);
-			await addNewContact(message.from);
+		if (!message.hasMedia) {
+			await saveChatHistory([
+				{
+					chat_id: message.from.replace("@c.us", ""),
+					phone: message.from,
+					message: message.body,
+					fromMe: message.fromMe,
+					timestamp: new Date(message.timestamp * 1000),
+					title: message.title || ""
+				}
+			]);
 		}
 
-		await saveChatHistory([
-			{
-				chat_id: message.from.replace("@c.us", ""),
-				phone: message.from,
-				message: message.body,
-				fromMe: message.fromMe,
-				timestamp: new Date(message.timestamp * 1000)
-			}
-		]);
+		if (message.from == constants.statusBroadcast || message.hasQuotedMsg || message.fromMe) {
+			return;
+		}
 
-		if (!message.fromMe) await updateContactStatus(message.from);
+		const exists = await checkIfContactExists(message.from);
+		const delay = Math.floor(Math.random() * 9000) + 1000; // 1s - 10s
 
-		if (message.from == constants.statusBroadcast || message.hasQuotedMsg) return;
-		await handleIncomingMessage(message);
-	});
+		if (!exists) {
+			console.log(`🆕 Brand new account: ${message.from}, send the first welcome message...`);
+			await addNewContact(message.from);
 
-	client.on(Events.MESSAGE_CREATE, async (message) => {
-		if (message.from == constants.statusBroadcast || message.hasQuotedMsg || !message.fromMe) return;
-		await handleIncomingMessage(message);
+			setTimeout(async () => {
+				await client.sendMessage(
+					message.from,
+					`Hola beautiful, como estas? 🙂\n\nIf you want to apply now for the job, you can go to https://appplyx.com`
+				);
+			}, delay);
+		}
+
+		setTimeout(async () => {
+			await handleIncomingMessage(message, client);
+		}, delay);
 	});
 
 	const shutdown = async () => {
@@ -113,14 +119,18 @@ const scanChatHistory = async (client) => {
 
 		for (const chat of chats) {
 			const messages = await chat.fetchMessages({ limit: 100 });
+
 			for (const msg of messages) {
-				messagesToSave.push({
-					chat_id: chat.id.user,
-					phone: chat.id.user + "@c.us",
-					message: msg.body,
-					fromMe: msg.fromMe,
-					timestamp: new Date(msg.timestamp * 1000)
-				});
+				if (msg.body !== "") {
+					messagesToSave.push({
+						chat_id: chat.id.user,
+						phone: chat.id.user + "@c.us",
+						message: msg.body,
+						fromMe: msg.fromMe,
+						timestamp: new Date(msg.timestamp * 1000),
+						title: msg._data.notifyName
+					});
+				}
 			}
 		}
 		if (messagesToSave.length > 0) await saveChatHistory(messagesToSave);

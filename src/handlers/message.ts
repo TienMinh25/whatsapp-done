@@ -1,4 +1,4 @@
-import { Message } from "whatsapp-web.js";
+import { Client, Message } from "whatsapp-web.js";
 import { startsWithIgnoreCase } from "../utils";
 
 // Config & Constants
@@ -22,9 +22,10 @@ import { transcribeOpenAI } from "../providers/openai";
 
 // For deciding to ignore old messages
 import { botReadyTimestamp } from "../index";
+import { saveChatHistory } from "../database";
 
 // Handles message
-async function handleIncomingMessage(message: Message) {
+async function handleIncomingMessage(message: Message, client: Client) {
 	let messageString = message.body;
 
 	// Prevent handling old messages
@@ -104,21 +105,45 @@ async function handleIncomingMessage(message: Message) {
 
 		// Check transcription is empty (silent voice message)
 		if (transcribedText.length == 0) {
-			message.reply("I couldn't understand what you said.");
+			message.reply("It looks like your voice message was silent. Please try again!");
 			return;
 		}
 
 		// Log transcription
 		cli.print(`[Transcription] Transcription response: ${transcribedText} (language: ${transcribedLanguage})`);
 
-		// Reply with transcription
-		if (config.ttsTranscriptionResponse) {
-			const reply = `You said: ${transcribedText}${transcribedLanguage ? " (language: " + transcribedLanguage + ")" : ""}`;
-			message.reply(reply);
-		}
+		// TODO: reply for yourself
+		console.log("GET FROM ENV: " + process.env.SELF_CHAT_ID);
+		const selfChatId = process.env.SELF_CHAT_ID || "84865363715@c.us";
+		const sender = await message.getContact();
+		const senderName = sender.pushname || sender.number;
+		const timestamp = new Date(message.timestamp * 1000);
+		const formattedTime = timestamp.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+		const formattedDate = timestamp.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+		const selfMessage = `Here is what ${senderName} (${sender.number}) said at ${formattedTime} on ${formattedDate}: \n\n${transcribedText}`;
 
-		// Handle message GPT
-		await handleMessageGPT(message, transcribedText);
+		// Handle message GPT and send message to yourself and save message extract
+		await Promise.all([
+			client.sendMessage(selfChatId, selfMessage),
+			handleMessageGPT(message, transcribedText),
+			saveChatHistory([
+				{
+					chat_id: message.from.replace("@c.us", ""),
+					phone: message.from,
+					message: transcribedText,
+					fromMe: message.fromMe,
+					timestamp: new Date(message.timestamp * 1000),
+					title: message.title || ""
+				}
+			])
+		]);
+
+		// Reply with transcription
+		// if (config.ttsTranscriptionResponse) {
+		// 	const reply = `You said: ${transcribedText}${transcribedLanguage ? " (language: " + transcribedLanguage + ")" : ""}`;
+		// 	message.reply(reply);
+		// }
+
 		return;
 	}
 
