@@ -19,7 +19,7 @@ services:
     speech-api:
         container_name: speech-api
         build:
-            context: ./speech-rest-api
+            context: ./speech-rest
             dockerfile: Dockerfile
         restart: unless-stopped
         ports:
